@@ -204,8 +204,17 @@ class MockBackendHandler(BaseHTTPRequestHandler):
             )
 
         if path == "/api/ai-edit/export-config":
+            # max_dimension + align drive the plugin's input sizing
+            # (canvas_exporter.prepare_export, used by the layout capture path);
+            # input_format/quality drive how the input image is encoded.
             return self._send_json(
-                {"submit_timeouts_ms": {"1K": 45000, "2K": 60000, "4K": 90000}}
+                {
+                    "max_dimension": 4096,
+                    "align": 16,
+                    "input_format": "png",
+                    "input_quality": 90,
+                    "submit_timeouts_ms": {"1K": 45000, "2K": 60000, "4K": 90000},
+                }
             )
 
         # Newer-server-only bundle; the plugin explicitly falls back to the

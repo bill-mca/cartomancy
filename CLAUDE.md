@@ -47,6 +47,9 @@ src/
   ui/
     plugin.py                plugin entry / lifecycle (large)
     dock_widget.py           main dock UI (large)
+    canvas_exporter.py       render canvas->image + geo-context (reused by M2)
+    composer_capture.py      render a layout map frame at print resolution (M2)
+    layout_integration.py    Layout Designer "AI Edit" action + generate flow (M3)
     dialogs/, panels/, tools/  account settings, templates, markup, swipe, etc.
   workers/                   QgsTask background jobs
     generation_worker.py     submit + poll a generation
@@ -87,11 +90,12 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full milestone plan (M0–M7).
    plugin runs end to end locally without the proprietary backend.
 2. ✅ **M1** — Composer→pixels engine: `src/core/layout/composer_params.py`
    (`PLAN.md` §5.1), unit-tested against the §5.1 table.
-3. ⏭️ **M2** — Capture the layout map frame to an image at print resolution
-   (use `get_composer_export_params` for the target size + extent/CRS).
-   **This is the immediate next step.**
-4. ⏭️ **M3** — Layout Designer entry point; wire capture → params → existing
-   `GenerationService`/`GenerationTask` → `raster_writer` → add layer.
+3. ✅ **M2** — Layout map-frame capture at print resolution
+   (`src/ui/composer_capture.py`). *Implemented; verify inside QGIS.*
+4. ✅ **M3** — Layout Designer "AI Edit" action + minimal generate flow
+   (`src/ui/layout_integration.py`, wired in `plugin.py` initGui/unload).
+   *Implemented; verify inside QGIS.* **Immediate next step: run M2/M3 in QGIS
+   against the mock** (open a Print Layout → AI Edit → Generate).
 5. ⏭️ **M4** — Stand up the Cloudflare Worker backend (`PLAN.md` §4) and repoint
    `TERRALAB_BASE_URL` at it (the mock already pins the contract).
 

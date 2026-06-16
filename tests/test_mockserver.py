@@ -120,6 +120,17 @@ class MockServerTest(unittest.TestCase):
         self.assertGreater(len(img), 64)
         self.assertEqual(headers.get("Content-Type"), "image/png")
 
+    def test_export_config_serves_sizing_fields(self):
+        # The layout capture path (canvas_exporter.prepare_export) needs
+        # max_dimension + align; encoding needs input_format.
+        status, raw, _ = _get(f"{self.base}/api/ai-edit/export-config")
+        self.assertEqual(status, 200)
+        cfg = json.loads(raw)
+        for key in ("max_dimension", "align", "input_format"):
+            self.assertIn(key, cfg)
+        self.assertGreater(cfg["max_dimension"], 0)
+        self.assertGreater(cfg["align"], 0)
+
     def test_upload_url_and_put(self):
         status, raw, _ = _post(
             f"{self.base}/api/ai-edit/upload-url", {"format": "png"}, self._auth()

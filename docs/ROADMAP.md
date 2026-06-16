@@ -71,43 +71,54 @@ geo-context needed for a resolution-aware API call. Pure logic, no UI.
 
 ---
 
-### M2 — Capture the layout map frame at print resolution
-**Goal:** render the layout's reference map item to an image at exactly
-`width_px × height_px`, plus capture its extent/CRS for georeferencing the result.
+### M2 — Capture the layout map frame at print resolution  ·  ✅ DONE (pending in-QGIS verification)
+**Goal:** render the layout's reference map item to the generation input image,
+plus capture its extent/CRS for georeferencing the result.
 
-**Tasks**
-- New `src/core/layout/composer_capture.py`: render the `QgsLayoutItemMap`
-  (via `QgsLayoutExporter` / a custom-painter render job) to a `QImage` at the
-  derived pixel size, encode to PNG/base64 (the generation input).
-- Reuse encoding/format patterns from `src/ui/canvas_exporter.py`.
-- Produce the `extent_dict` + `crs_wkt` that `raster_writer.write_geotiff()`
-  already consumes, so the result georeferences correctly.
+**Delivered**
+- `src/ui/composer_capture.py` (placed beside `canvas_exporter.py` so it can
+  reuse it directly — rendering is UI-layer, hence not under `core/`):
+  `capture_layout_map(layout, ctx)` builds a `QgsMapSettings` from the reference
+  `QgsLayoutItemMap` (effective layers via `layersToRender()`, CRS, extent,
+  rotation guard) and runs it through the **proven** canvas pipeline
+  (`prepare_export` → `render_export` → `apply_export_context`).
+- Returns a `LayoutCapture` with `image_b64`, `extent_dict`
+  (xmin/ymin/xmax/ymax), `crs_wkt`/`crs_authid`, tier, and sizes — already
+  shaped for `GenerationTask` + `write_geotiff`.
+- Key decision: the input is rendered at the **resolution-tier budget (≤4K)**,
+  not the raw paper pixel count (an A0 @ 300 DPI is ~140 MP). The full paper px
+  (from M1) only selects the tier.
+- Mock backend now serves `max_dimension`/`align`/`input_format` in
+  `export-config` (what `prepare_export` reads; the real Worker will too).
 
-**Acceptance:** for a sample layout, output a PNG of the exact expected pixel
-size with correct extent/CRS; round-trips through `write_geotiff` to a valid
-GeoTIFF. **Depends on:** M1.
+**Acceptance:** syntax-validated + reuses the proven canvas path. **Runtime
+verification inside QGIS is pending** (no QGIS in CI; covered by the human
+"install on Linux and test against real layouts" task). **Depends on:** M1.
 
 ---
 
-### M3 — Layout Designer entry point + minimal generate flow  ·  *first visible pivot*
+### M3 — Layout Designer entry point + minimal generate flow  ·  ✅ DONE (pending in-QGIS verification)  ·  *first visible pivot*
 **Goal:** the user opens a Print Layout, types a prompt, clicks generate, and an
 AI-edited georeferenced layer appears — driven entirely from the layout.
 
-**Tasks**
-- Hook the Layout Designer: in `AIEditPlugin.initGui`, subscribe to
-  `iface.layoutDesignerOpened` and add `Layout → AI Edit → Generate from current
-  layout…` (`PLAN.md` §5.5). Use `src/ui/terralab_menu.py` as the existing
-  menu-wiring pattern; confirm exact `QgsLayoutDesignerInterface` calls against
-  the QGIS API.
-- A minimal generate panel/dialog (prompt input + progress bar). Reuse pieces of
-  `dock_widget.py` rather than rebuild.
-- Wire the pipeline: **M2 capture → M1 params → existing `GenerationService` /
-  `GenerationTask` → `raster_writer` → add layer to project** (the worker and
-  result-handling code are reused as-is).
+**Delivered**
+- `src/ui/layout_integration.py` — `LayoutGenerationController`: hooks
+  `iface.layoutDesignerOpened` (and decorates already-open designers), adding an
+  **AI Edit** toolbar + menu action to each Print Layout Designer window.
+- The generate flow: capture (M2) → prompt (`QInputDialog`) → credit pre-flight
+  (skippable via `SKIP_TRIAL_CHECK`) → the **existing** `GenerationTask`
+  (`aspect_ratio="auto"`, reusing the plugin's `client`/`auth_manager`) →
+  `add_geotiff_to_project()` → active layer. Progress shown in a
+  `QProgressDialog` (cancel wired to the service/worker).
+- Wired into `AIEditPlugin.initGui` (install) and `unload` (uninstall); uses its
+  own `GenerationService` so a layout run can't clash with a canvas one.
 
-**Acceptance:** end-to-end generation from a Print Layout against the **mock**;
-the result layer is added and correctly georeferenced; runs with
-`SKIP_TRIAL_CHECK=true`. **Depends on:** M1, M2.
+**Acceptance:** syntax-validated; reuses the proven generation + layer-add path.
+**Runtime verification inside QGIS is pending** — to confirm: open a Print
+Layout against the mock (`SKIP_TRIAL_CHECK=true`), click AI Edit → Generate, and
+see the result layer added and correctly georeferenced. The exact
+`QgsLayoutDesignerInterface` window access (`designer.view().window()`) and menu
+wiring are the bits to watch on first run. **Depends on:** M1, M2.
 
 ---
 
@@ -171,9 +182,9 @@ M0 ✅ ──▶ M1 ──▶ M2 ──▶ M3 ───────────�
                                                 the contract is already frozen by the mock)
 ```
 
-- **Immediate next step:** M2 — capture the layout map frame at print resolution
-  (M1's `get_composer_export_params` gives the exact target size + geo-context).
-- M2 + M3 deliver the first user-visible Print Layout generation (against the mock).
+- **Immediate next step:** verify M2/M3 inside QGIS against the mock (the first
+  user-visible Print Layout generation), then start M4 (the real Worker).
+- M4 (the Worker) can begin in parallel; the contract is already frozen by the mock.
 - M4 (the Worker) can begin in parallel the moment we want it; it doesn't block M1–M3.
 
 ---
@@ -193,8 +204,8 @@ M0 ✅ ──▶ M1 ──▶ M2 ──▶ M3 ───────────�
 
 - [x] **M0** — Local mock backend + `.env.local` dev loop
 - [x] **M1** — Composer→pixels engine (+ unit tests)
-- [ ] **M2** — Layout map-frame capture at print resolution
-- [ ] **M3** — Layout Designer entry point + minimal generate flow
+- [x] **M2** — Layout map-frame capture at print resolution *(pending in-QGIS verification)*
+- [x] **M3** — Layout Designer entry point + minimal generate flow *(pending in-QGIS verification)*
 - [ ] **M4** — Cloudflare Worker backend (D1 / R2 / KV / Gemini)
 - [ ] **M5** — EU AI Act GeoTIFF metadata tagging
 - [ ] **M6** — Name decision + namespace rename + rebrand

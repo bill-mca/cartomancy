@@ -393,6 +393,7 @@ class AIEditPlugin:
         self._settings_action = None
         self._selected_extent = None
         self._worker = None
+        self._layout_controller = None
         # Off-thread canvas exporter. Built fresh per click in _on_generate so
         # the heavy render+PNG-encode doesn't freeze the UI.
         self._export_worker: ExportWorker | None = None
@@ -760,6 +761,23 @@ class AIEditPlugin:
         # falls back to the three legacy loaders on older servers.
         self._bootstrap_startup()
 
+        # Print Layout integration (ROADMAP M2/M3): add an "AI Edit" action to
+        # every Print Layout Designer that generates from the layout at its
+        # print resolution and adds the georeferenced result to the project.
+        try:
+            from .layout_integration import LayoutGenerationController
+            self._layout_controller = LayoutGenerationController(
+                self._iface,
+                self._client,
+                self._auth_manager,
+                plugin_dir,
+                skip_trial_check=self._skip_trial_check,
+                dev_mode=self._dev_mode,
+            )
+            self._layout_controller.install()
+        except Exception as err:  # noqa: BLE001
+            log_warning(f"Layout integration install failed: {err}")
+
         if self._dev_mode:
             log("AI Edit plugin loaded [DEV MODE]")
         else:
@@ -784,6 +802,15 @@ class AIEditPlugin:
             except Exception:  # nosec B110
                 pass
         self._worker = None
+
+        # Remove the Print Layout integration (toolbar/menu actions + any
+        # in-flight layout generation) before the rest of teardown.
+        if self._layout_controller is not None:
+            try:
+                self._layout_controller.uninstall()
+            except Exception as err:  # nosec B110
+                log_warning(f"Layout integration uninstall failed: {err}")
+            self._layout_controller = None
 
         # Same drain for the canvas-export worker. Drop the pending hand-off
         # so a late completed-signal doesn't try to kick a GenerationWorker
