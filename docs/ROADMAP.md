@@ -46,21 +46,28 @@ See [`TESTING.md`](TESTING.md).
 
 ## Milestones
 
-### M1 — Composer→pixels engine  ·  *the differentiator's core*
+### M1 — Composer→pixels engine  ·  *the differentiator's core*  ·  ✅ DONE
 **Goal:** turn an open Print Layout into exact output pixel dimensions + the
 geo-context needed for a resolution-aware API call. Pure logic, no UI.
 
-**Tasks**
-- New `src/core/layout/composer_params.py`:
-  - `get_composer_export_params(layout) -> dict` — paper size (mm), DPI,
-    `width_px`/`height_px`, map-frame extent + CRS (per `PLAN.md` §5.1).
-  - `select_resolution_tier(width_px, height_px) -> "1K"|"2K"|"4K"`.
-  - (Optional) `credits_for_area(width_px, height_px)` for future DPI-aware pricing.
-- New `tests/test_composer_params.py` reproducing the example table in
-  `PLAN.md` §5.1 (A4@96 → 2K, A4@300 → 4K, A3@150 → 4K, A3@300 → 4K, 200mm@96 → 1K).
+**Delivered**
+- `src/core/layout/composer_params.py`:
+  - `compute_pixel_dimensions(width_mm, height_mm, dpi)` and
+    `select_resolution_tier(...)` — pure math, no QGIS dependency.
+  - `get_composer_export_params(layout)` — duck-typed adapter over a
+    `QgsPrintLayout`; returns `width_px`/`height_px`, DPI, paper size, tier, and
+    `extent` (xmin/ymin/xmax/ymax) + `crs_authid`/`crs_wkt` **already shaped for
+    `raster_writer.write_geotiff` and the generation pipeline**.
+  - `credits_for_area(...)` — optional DPI-aware pricing helper (`PLAN.md` §6).
+- `tests/test_composer_params.py` — 11 stdlib tests; the headline test
+  reproduces the `PLAN.md` §5.1 table exactly.
 
-**Acceptance:** unit tests reproduce the `PLAN.md` §5.1 table exactly.
-**Depends on:** nothing. **Risk:** low. **Start here.**
+> Caught + resolved: the `PLAN.md` §5.1 snippet uses `int()` truncation, which
+> does **not** reproduce its own example table (off by a pixel, e.g. 793 vs 794).
+> We round half-up to match the table and avoid under-resolving.
+
+**Acceptance:** ✅ `python -m unittest tests.test_composer_params` reproduces the
+`PLAN.md` §5.1 table exactly.
 
 ---
 
@@ -164,8 +171,8 @@ M0 ✅ ──▶ M1 ──▶ M2 ──▶ M3 ───────────�
                                                 the contract is already frozen by the mock)
 ```
 
-- **Immediate next step:** M1 — it's pure, unit-tested, and the heart of the
-  product. No external dependencies, no account setup.
+- **Immediate next step:** M2 — capture the layout map frame at print resolution
+  (M1's `get_composer_export_params` gives the exact target size + geo-context).
 - M2 + M3 deliver the first user-visible Print Layout generation (against the mock).
 - M4 (the Worker) can begin in parallel the moment we want it; it doesn't block M1–M3.
 
@@ -185,7 +192,7 @@ M0 ✅ ──▶ M1 ──▶ M2 ──▶ M3 ───────────�
 ## Status checklist
 
 - [x] **M0** — Local mock backend + `.env.local` dev loop
-- [ ] **M1** — Composer→pixels engine (+ unit tests)
+- [x] **M1** — Composer→pixels engine (+ unit tests)
 - [ ] **M2** — Layout map-frame capture at print resolution
 - [ ] **M3** — Layout Designer entry point + minimal generate flow
 - [ ] **M4** — Cloudflare Worker backend (D1 / R2 / KV / Gemini)

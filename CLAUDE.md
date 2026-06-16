@@ -39,6 +39,8 @@ src/
       activation_manager.py  key format (^tl_[0-9a-f]{32}$), /usage validation
       auth_helper.py         key persistence (QgsAuthManager, encrypted)
     generation/              generation + vectorization services
+    layout/                  composer→pixels engine (Print Layout differentiator)
+      composer_params.py     paper size x DPI -> exact output px + geo-context (M1)
     config_store.py          cached server config
     prompts/                 prompt presets, history, loading messages
     telemetry*.py            opt-in event tracking
@@ -83,11 +85,14 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full milestone plan (M0–M7).
 
 1. ✅ **M0** — Docs reorientation + local mock backend (`mockserver/`) so the
    plugin runs end to end locally without the proprietary backend.
-2. ⏭️ **M1** — Composer→pixels engine: `src/core/layout/composer_params.py`
-   (`PLAN.md` §5.1) with unit tests. **This is the immediate next step.**
-3. ⏭️ **M2/M3** — Capture the layout map frame at print resolution, then add the
-   Layout Designer entry point and wire it to the existing generation pipeline.
-4. ⏭️ **M4** — Stand up the Cloudflare Worker backend (`PLAN.md` §4) and repoint
+2. ✅ **M1** — Composer→pixels engine: `src/core/layout/composer_params.py`
+   (`PLAN.md` §5.1), unit-tested against the §5.1 table.
+3. ⏭️ **M2** — Capture the layout map frame to an image at print resolution
+   (use `get_composer_export_params` for the target size + extent/CRS).
+   **This is the immediate next step.**
+4. ⏭️ **M3** — Layout Designer entry point; wire capture → params → existing
+   `GenerationService`/`GenerationTask` → `raster_writer` → add layer.
+5. ⏭️ **M4** — Stand up the Cloudflare Worker backend (`PLAN.md` §4) and repoint
    `TERRALAB_BASE_URL` at it (the mock already pins the contract).
 
 ## Conventions
