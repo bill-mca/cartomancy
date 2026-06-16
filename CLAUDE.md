@@ -10,8 +10,10 @@ exactly the intended print resolution.
 It is a **fork of "AI Edit by TerraLab" (GPL-2.0)** being taken in a new,
 independent direction. Read these first:
 
-- **[`docs/PLAN.md`](docs/PLAN.md)** — the canonical forward plan (market,
-  Cloudflare architecture, D1 schema, pricing, build sprint, roadmap).
+- **[`docs/PLAN.md`](docs/PLAN.md)** — the canonical forward plan / strategy
+  (market, Cloudflare architecture, D1 schema, pricing).
+- **[`docs/ROADMAP.md`](docs/ROADMAP.md)** — the engineering sequence (milestones
+  M0–M7, what to build next). **Start here for "what do I do now".**
 - **[`docs/TESTING.md`](docs/TESTING.md)** — how to run locally without the
   proprietary backend (the dev auth/backend workaround).
 
@@ -47,9 +49,13 @@ src/
   workers/                   QgsTask background jobs
     generation_worker.py     submit + poll a generation
     pairing_poll_task.py     poll /api/plugin/pair/poll during browser sign-in
+mockserver/                  zero-dep local mock backend (dev-only stand-in for
+                             the API; seed of the future Cloudflare Worker)
+tests/                       stdlib unittest tests (no QGIS needed)
+.env.local.example           dev config template → copy to .env.local (git-ignored)
 resources/icons/             icons (still upstream-branded; rebrand later)
 i18n/                        Qt .ts translations (still named ai_edit_*)
-docs/                        PLAN.md, TESTING.md
+docs/                        PLAN.md, ROADMAP.md, TESTING.md
 ```
 
 ## Key concepts to know before editing
@@ -58,8 +64,11 @@ docs/                        PLAN.md, TESTING.md
   plus `X-Product-ID: ai-edit`. Validated by `GET /api/plugin/usage`. There is
   **no username/password**; sign-in is a browser **pairing** handoff that mints a
   key, or manual key entry.
-- **Backend is swappable** without code changes via `TERRALAB_BASE_URL`. This is
-  the seam we use for local testing now and for our Cloudflare backend later.
+- **Backend is swappable** without code changes via `TERRALAB_BASE_URL` (read
+  from `.env.local` at `plugin.py:_create_client`). This is the seam we use for
+  local testing now and for our Cloudflare backend later. `.env.local` also
+  honors `SKIP_TRIAL_CHECK=true` (skip the credit pre-flight) and `DEBUG=true`
+  (plugin dev mode). See `docs/TESTING.md`.
 - **Credits/quota** are server-enforced; the client preflights with `/usage`
   (cached ~60s) in `AuthManager.check_can_generate()`.
 - **Background work uses `QgsTask`** (see `src/workers/`), not raw threads, so
@@ -70,13 +79,16 @@ docs/                        PLAN.md, TESTING.md
 
 ## Current direction / next steps
 
-1. ✅ Docs reflect the fork's new direction (this pass).
-2. ⏭️ Build `mockserver/` implementing the contract in `docs/TESTING.md`
-   (start with `GET /api/plugin/usage`) so the plugin runs end to end locally.
-3. ⏭️ Add the **Print Layout** integration: composer→pixels engine
-   (`PLAN.md` §5.1) and a Layout Designer menu hook (`PLAN.md` §5.5).
-4. ⏭️ Stand up the Cloudflare Worker backend (`PLAN.md` §4) and repoint
-   `TERRALAB_BASE_URL` at it.
+See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full milestone plan (M0–M7).
+
+1. ✅ **M0** — Docs reorientation + local mock backend (`mockserver/`) so the
+   plugin runs end to end locally without the proprietary backend.
+2. ⏭️ **M1** — Composer→pixels engine: `src/core/layout/composer_params.py`
+   (`PLAN.md` §5.1) with unit tests. **This is the immediate next step.**
+3. ⏭️ **M2/M3** — Capture the layout map frame at print resolution, then add the
+   Layout Designer entry point and wire it to the existing generation pipeline.
+4. ⏭️ **M4** — Stand up the Cloudflare Worker backend (`PLAN.md` §4) and repoint
+   `TERRALAB_BASE_URL` at it (the mock already pins the contract).
 
 ## Conventions
 
