@@ -122,11 +122,19 @@ wiring are the bits to watch on first run. **Depends on:** M1, M2.
 
 ---
 
-### M4 — Cloudflare Worker backend  ·  *retire the mock*
+### M4 — Cloudflare Worker backend  ·  *retire the mock*  ·  🟡 STARTED
 **Goal:** replace the mock with the real backend; keep the identical contract so
 the plugin changes only its `TERRALAB_BASE_URL`.
 
-**Tasks** (`PLAN.md` §4)
+**Done so far** (language-agnostic foundation, in [`backend/`](../backend/)):
+- `backend/migrations/0001_init.sql` — D1 schema, reconciled with the plugin's
+  activation-key auth + pairing (the PLAN's email/password assumption is wrong).
+- `backend/README.md` — the Worker contract spec (mock → real backend mapping,
+  the `/generate` credit flow, bindings, auth model).
+- **Blocked on:** the Worker **language decision** (Python/FastAPI per `PLAN.md`
+  §4.3 vs TypeScript — recommended). Handlers/services come after.
+
+**Remaining tasks** (`PLAN.md` §4)
 - `workers/` scaffold; routes mirroring the mock: `/api/plugin/usage`,
   `/api/ai-edit/generate`, `/generate/status`, `/upload-url`, pairing, config.
 - D1 schema + migrations (`PLAN.md` §4.2); R2 upload + signed URLs; KV for
