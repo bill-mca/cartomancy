@@ -1,0 +1,21 @@
+# Local dev backend override (TERRALAB_BASE_URL etc.) — never commit
+.env.local
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local mock backend artifacts / generated test outputs
+mockserver/_data/
+*.tif.tmp
+ai_edit_*.tif
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
